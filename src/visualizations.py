@@ -267,7 +267,7 @@ def visualize_reconstructions_avg_comparison(paths_unfair, paths_fair, race="Bla
                     ax.axis("off")  # Turn off axis labels
     plt.tight_layout()
 
-def visualize_reconstructions_noisy_avg(paths, race="Black", num_imgs=10):
+def visualize_reconstructions_noisy_avg(paths, path_avg, race="Black", num_imgs=10):
     methods = list(paths.keys()) 
         
     fig, axes = plt.subplots(num_imgs, len(methods), figsize=(12, num_imgs * 1.8))
@@ -291,11 +291,11 @@ def visualize_reconstructions_noisy_avg(paths, race="Black", num_imgs=10):
             img = Image.open(image_path)
             img = img.resize((4, 4)) 
         elif method == "real":
-            img_name = f"{race}_{img_id}.jpg"
-            image_path = os.path.join(paths["real"], img_name)
+            img_name = f"{race}.jpg"
+            image_path = os.path.join(path_avg, img_name)
             if not os.path.exists(image_path):
                 img_name = img_name.replace(".jpg", ".png")
-                image_path = os.path.join(paths["real"], img_name)
+                image_path = os.path.join(path_avg, img_name)
             img = Image.open(image_path)
         else: 
             img_name = f"{race}_{img_id}.jpg"
@@ -347,6 +347,71 @@ def plot_performance_per_race(loss, dfs, setting, methods, ylim=None):
     os.makedirs("plots/performance_per_race/", exist_ok=True)
     plt.savefig(f"plots/performance_per_race/loss={loss}-setting={setting}.pdf")
     
+def plot_rdp(dfs, setting, methods, ylim=None):
+    # concat all loss dfs 
+    loss_dfs = []
+    for method in methods:
+        df = dfs[setting][method]
+        df["method"] = name_to_str(method) 
+        loss_dfs.append(df)
+    loss_df = pd.concat(loss_dfs, ignore_index=True)
+    loss_df.loc[loss_df["race"]=="Latino_Hispanic", "race"] = "Latino Hispanic"
+    loss_df = loss_df.rename(columns={"method": "Method"})
+    
+    # Get correct predictions
+    correct_predictions_df = loss_df.groupby(["Method", "race", "race_0-1"]).size().reset_index(name="count")
+    # Reorder to make ordering of Methods consistent 
+    try: 
+        # Note: You may need to modify this if you consider different methods
+        custom_order = ["PULSE", "pSp", "fair-pSp", "Post.Samp.", "DDRM"]
+        correct_predictions_df = correct_predictions_df.set_index('Method').loc[custom_order].reset_index()
+    except:
+        pass
+    
+    correct_predictions_df = correct_predictions_df[correct_predictions_df["race_0-1"]!= 0]
+    correct_predictions_df = correct_predictions_df.drop(columns=["race_0-1"])
+    
+    # Scale correct predictions for each method  
+    method_counts = correct_predictions_df.groupby('Method')['count'].transform('sum')
+    correct_predictions_df["RDP"] = correct_predictions_df["count"] / method_counts 
+    
+    # Ordering to keep everything consistent
+    order = ["White", 
+                 "Southeast Asian", 
+                 "Latino Hispanic",
+                 "Middle Eastern", 
+                 "Black",
+                 "East Asian",
+                 "Indian"]
+    correct_predictions_df["race"] = pd.Categorical(correct_predictions_df["race"], order)
+    
+    
+    sns.set_theme(font_scale=2.5)  # Increase font size
+    sns.set_style("whitegrid")
+    g = sns.catplot(data=correct_predictions_df, 
+                    kind="bar", 
+                    x="race", 
+                    y="RDP", 
+                    hue="Method", 
+                    palette="dark", 
+                    alpha=.6, 
+                    height=10, 
+                    aspect=2, 
+                    legend=True)
+    g.despine(left=True)
+    g.set(xlabel=None, ylabel=None)
+    
+    # As a reference line, we plot the uniform distribution
+    uniform = 1 / loss_df['race'].nunique()
+    plt.axhline(y=uniform, color='r', linestyle='--', linewidth=4) # Uniform distribution 
+    
+    sns.move_legend(g, "upper center", ncol=len(methods))
+    if ylim is not None:
+        plt.ylim(ylim)
+    plt.tight_layout()
+    os.makedirs("plots/performance_per_race/", exist_ok=True)
+    plt.savefig(f"plots/performance_per_race/rdp-setting={setting}.pdf")
+    
 def plot_pr(dfs, setting, methods, ylim=None):
     # concat all loss dfs 
     loss_dfs = []
@@ -387,6 +452,11 @@ def plot_pr(dfs, setting, methods, ylim=None):
                      shrink=0.7
                     )
     g.set(xlabel=None, ylabel=None)
+    
+    # As a reference line, we plot the uniform distribution
+    uniform = 1 / loss_df['Race'].nunique()
+    plt.axhline(y=uniform, color='r', linestyle='--', linewidth=4) # Uniform distribution 
+    
     if ylim is not None:
         plt.ylim(ylim)
     plt.tight_layout()
@@ -396,13 +466,13 @@ def plot_pr(dfs, setting, methods, ylim=None):
 def plot_ucpr(dfs, setting, methods, races, ylim=None):
     ucpr = compute_UCPR(dfs, setting, methods, races) 
     ucpr_df = pd.DataFrame(ucpr)
-    ucpr_df["eth"] = races
+    ucpr_df["race"] = races
     if setting in ["fairface_avg", "unfairface_avg"]:
         ucpr_df = ucpr_df.drop(["psp", "fairpsp"], axis=1) 
     ucpr_df = ucpr_df.rename(columns={"pulse": "PULSE",
                                       "posteriorSampling": "Post.Samp.",
                                       "ddrm": "DDRM"})
-    ucpr_df.loc[ucpr_df["eth"]=="Latino_Hispanic", "eth"] = "Latino Hispanic"
+    ucpr_df.loc[ucpr_df["race"]=="Latino_Hispanic", "race"] = "Latino Hispanic"
 
 
     order = ["White", 
@@ -413,10 +483,10 @@ def plot_ucpr(dfs, setting, methods, races, ylim=None):
                     "East Asian",
                     "Indian"]
 
-    ucpr_df["eth"] = pd.Categorical(ucpr_df["eth"], order, ordered=True)
-    ucpr_df = ucpr_df.sort_values(by='eth')
+    ucpr_df["race"] = pd.Categorical(ucpr_df["race"], order, ordered=True)
+    ucpr_df = ucpr_df.sort_values(by='race')
     
-    ucpr_df = pd.melt(ucpr_df, id_vars=["eth"], var_name="Method")
+    ucpr_df = pd.melt(ucpr_df, id_vars=["race"], var_name="Method")
 
 
     sns.set_theme(font_scale=4.3)  # Increase font size
@@ -425,7 +495,7 @@ def plot_ucpr(dfs, setting, methods, races, ylim=None):
     plt.figure(figsize=(40,20))
     
     g = sns.barplot(data=ucpr_df, 
-                    x="eth", 
+                    x="race", 
                     y="value", 
                     hue="Method",
                     palette="dark",
@@ -435,6 +505,11 @@ def plot_ucpr(dfs, setting, methods, races, ylim=None):
                     )
    
     g.set(xlabel=None, ylabel=None)
+    
+    # As a reference line, we plot the uniform distribution
+    uniform = 1 / ucpr_df["race"].nunique()
+    plt.axhline(y=uniform, color='r', linestyle='--', linewidth=8) # Uniform distribution 
+    
     if ylim is not None:
         plt.ylim(ylim)
     plt.tight_layout()
