@@ -5,6 +5,7 @@ import seaborn as sns
 import pandas as pd 
 from PIL import Image 
 from src.fairness import compute_UCPR
+import colorsys 
 
 # utils function for figure Titles and Legends
 def name_to_str(name):
@@ -441,16 +442,26 @@ def plot_pr(dfs, setting, methods, ylim=None):
                  "Indian"]
     loss_df["Race"] = pd.Categorical(loss_df["Race"], order)
 
+    # catplot uses saturation of 0.75 instead of the "original" colors. 
+    # This adjusts the color palette to make it consistent.  
+    palette = sns.color_palette("dark")
+    adjusted_palette = []
+    for color in palette:
+        h, l, s = colorsys.rgb_to_hls(*color)
+        adjusted_color = colorsys.hls_to_rgb(h, l, s * 0.75)
+        adjusted_palette.append(adjusted_color)
     g = sns.histplot(data=loss_df, 
                      x="Race", 
                      stat="proportion", 
                      hue="Method",
-                     palette="dark",
+                     palette=adjusted_palette, #"dark",
                      common_norm=False,
                      multiple="dodge",
                      alpha=.6, 
                      shrink=0.7
                     )
+    sns.despine(left=True)
+    plt.gca().xaxis.grid(False)
     g.set(xlabel=None, ylabel=None)
     
     # As a reference line, we plot the uniform distribution
