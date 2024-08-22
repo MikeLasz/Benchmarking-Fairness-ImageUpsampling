@@ -93,12 +93,22 @@ All models can be downloaded [here](https://ruhr-uni-bochum.sciebo.de/s/PpVolx8X
 For evaluting your own model using the proposed benchmark, you need to train the upsampling model on FairFace and UnfairFace. UnfairFace is a processed and filtered version of FairFace and can be accessed [here](https://ruhr-uni-bochum.sciebo.de/s/eWzVGs5lMgMVgW8). For further details on UnfairFace, we refer to Section 3 of the paper. 
 
 # Citation 
-If you find this repository useful, please consider citing the preprint of our paper:
+If you find this repository useful, please consider citing the our paper:
 ```
-@article{laszkiewicz2024benchmarking,
-  title={Benchmarking the Fairness of Image Upsampling Methods},
-  author={Laszkiewicz, Mike and Daunhawer, Imant and Vogt, Julia E and Fischer, Asja and Lederer, Johannes},
-  journal={arXiv preprint arXiv:2401.13555},
-  year={2024}
+@inproceedings{10.1145/3630106.3658921,
+author = {Laszkiewicz, Mike and Daunhawer, Imant and Vogt, Julia E. and Fischer, Asja and Lederer, Johannes},
+title = {Benchmarking the Fairness of Image Upsampling Methods},
+year = {2024},
+isbn = {9798400704505},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3630106.3658921},
+doi = {10.1145/3630106.3658921},
+booktitle = {Proceedings of the 2024 ACM Conference on Fairness, Accountability, and Transparency},
+pages = {489–517},
+numpages = {29},
+keywords = {Computer Vision, Conditional Generative Models, Fairness, Image Upsampling},
+location = {Rio de Janeiro, Brazil},
+series = {FAccT '24}
 }
 ```
